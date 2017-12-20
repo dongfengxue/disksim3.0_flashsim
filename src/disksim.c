@@ -871,20 +871,22 @@ void disksim_setup_disksim (int argc, char **argv)
    } 
    
   disksim_setup_outputfile (argv[2], "w");
+  printf("this is a test!\n");
+  fprintf(outputfile,"add by lhj");
   fprintf (outputfile, "\n*** Output file name: %s\n", argv[2]); 
-  fflush (outputfile); 
+  fflush (outputfile);   //强制将缓冲区中的内容写入文件
    
   if(strcmp (argv[3], "external") == 0) {
     disksim->external_control = 1;
   } 
   else {
-    iotrace_set_format(argv[3]);
+    iotrace_set_format(argv[3]);          //设置trace格式，自己添加dedup
   }
 
   fprintf (outputfile, "*** Input trace format: %s\n", argv[3]); 
   fflush (outputfile); 
 
-  disksim_setup_iotracefile (argv[4]);
+  disksim_setup_iotracefile (argv[4]);        //打开trace文件
   fprintf (outputfile, "*** I/O trace used: %s\n", argv[4]); 
   fflush (outputfile); 
 
@@ -1002,7 +1004,7 @@ void disksim_run_simulation ()
     disksim_simulate_event(event_count);
     event_count++;
   }
-//  printf("disksim_run_simulation(): simulated %d events\n", event_count);
+  printf("disksim_run_simulation(): simulated %d events\n", event_count);
 }
 
 

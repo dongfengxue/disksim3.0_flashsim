@@ -82,12 +82,12 @@ struct sect_state {
 };
 
 struct nand_blk_info {
-  struct blk_state state;                   // Erase Conunter
-  struct sect_state sect[SECT_NUM_PER_BLK]; // Logical Sector Number
+  struct blk_state state;                   // Erase Conunter // 该块的状态，包含三个属性：free，ec(erase counter), update_ec
+  struct sect_state sect[SECT_NUM_PER_BLK]; // Logical Sector Number  // 该块下所有 sector 状态的集合。包含三个属性：free, valid, lsn
   _s32 fpc : 10; // free page counter
   _s32 ipc : 10; // invalide page counter
   _s32 lwn : 12; // last written page number
-  int page_status[PAGE_NUM_PER_BLK];
+  int page_status[PAGE_NUM_PER_BLK];    //该块下所有page状态的集合，值为0和1
 };
 
 extern _u32 nand_blk_num;

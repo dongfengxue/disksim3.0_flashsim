@@ -126,14 +126,14 @@ int main (int argc, char **argv)
     len -= ALLOCSIZE;
 
     disksim = disksim_initialize_disksim_structure (newaddr, len);
-    disksim_setup_disksim (argc, argv);
+    disksim_setup_disksim (argc, argv);         //初始化disksim
   }
 
   memset(dm_table, -1, sizeof(int)*DM_MGR_SIZE);
 
   if(ftl_type != -1){
 
-    initFlash();
+    initFlash();                 		//初始化闪存
     reset_flash_stat();
     nand_stat_reset();
   }

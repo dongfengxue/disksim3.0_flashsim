@@ -107,11 +107,11 @@ int nand_init (_u32 blk_num, _u8 min_free_blk_num)
   memset(nand_blk, 0xFF, sizeof (struct nand_blk_info) * blk_num);
 
   
-  nand_blk_num = blk_num;
+  nand_blk_num = blk_num;    // SSD总的block的数量
 
   pb_size = 1;
-  min_fb_num = min_free_blk_num;
-  for (blk_no = 0; blk_no < blk_num; blk_no++) {
+  min_fb_num = min_free_blk_num;   // min free block number
+  for (blk_no = 0; blk_no < blk_num; blk_no++) {   // 初始化每个block
     nand_blk[blk_no].state.free = 1;
     nand_blk[blk_no].state.ec = 0;
     nand_blk[blk_no].fpc = SECT_NUM_PER_BLK;
@@ -129,7 +129,8 @@ int nand_init (_u32 blk_num, _u8 min_free_blk_num)
       nand_blk[blk_no].page_status[i] = -1; // 0: data, 1: map table
     }
   }
-  free_blk_num = nand_blk_num;
+  free_blk_num = nand_blk_num;   
+  // free block number，初始化的时候所有的block都是空闲
 
   free_blk_idx =0;
 

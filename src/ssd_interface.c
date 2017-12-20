@@ -163,7 +163,7 @@ void initFlash()
 
   ASSERT(total_extr_blk_num != 0);
 
-  if (nand_init(total_blk_num, 3) < 0) {
+  if (nand_init(total_blk_num, 3) < 0) {   				//初始化闪存基本信息
     EXIT(-4); 
   }
 
@@ -383,8 +383,8 @@ double callFsim(unsigned int secno, int scount, int operation)
       
   // page based FTL 
   if(ftl_type == 1 ) { 
-    blkno = secno / 4;
-    bcount = (secno + scount -1)/4 - (secno)/4 + 1;
+    blkno = secno / 4;    //此处的blkno是pageno
+    bcount = (secno + scount -1)/4 - (secno)/4 + 1;    //占据的页长度
   }  
   // block based FTL 
   else if(ftl_type == 2){

@@ -158,6 +158,9 @@ void iotrace_set_format (char *formatname)
    } else if (strcmp(formatname, "emcsymm") == 0) {
 	/* format of Symmetrix traces provided by EMC for research purposes */
       disksim->traceformat = EMCSYMM;
+	} else if (strcmp(formatname, "dedup") == 0) {
+	/* format of trace add by lhj */
+      disksim->traceformat = DEDUP;                  //add by lhj
    } else {
       fprintf(stderr, "Unknown trace format - %s\n", formatname);
       exit(1);
