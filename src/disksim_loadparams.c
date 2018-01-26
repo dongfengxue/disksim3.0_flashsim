@@ -70,7 +70,7 @@ int disksim_loadparams(char *inputfile, int synthgen) {
   lp_init_typetbl();
 
 
-  disksim->parfile = fopen(inputfile,"r");
+  disksim->parfile = fopen(inputfile,"r");     //打开的输入文件指针
   ddbg_assert2(disksim->parfile != NULL, 
 	     ("Parameter file \"%s\" cannot be opened for read access\n", 
 	      inputfile));
@@ -86,7 +86,7 @@ int disksim_loadparams(char *inputfile, int synthgen) {
 
   lp_unparse_tlts(tlts, tlts_len, outputfile, inputfile);
 
-  lp_instantiate("Global", "Global");
+  lp_instantiate("Global", "Global");    //实例化
   lp_instantiate("Stats", "Stats");
 
   // instantiate any logorgs, syncsets we find

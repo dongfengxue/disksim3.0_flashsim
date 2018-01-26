@@ -542,6 +542,7 @@ static ioreq_event * iotrace_ascii_get_ioreq_event (FILE *tracefile, ioreq_event
       return(NULL);
    }
    if (sscanf(line, "%lf %d %d %d %x\n", &new->time, &new->devno, &new->blkno, &new->bcount, &new->flags) != 5) {
+   //	if (sscanf(line, "%lf %d %d %d %s\n", &new->time,  &new->blkno, &new->bcount, &new->flags,hash) != 5) {
       fprintf(stderr, "Wrong number of arguments for I/O trace event type\n");
       fprintf(stderr, "line: %s", line);
       ddbg_assert(0);
@@ -565,6 +566,42 @@ static ioreq_event * iotrace_ascii_get_ioreq_event (FILE *tracefile, ioreq_event
    return(new);
 }
 
+/*add by lhj   ,dedup trace解析*/
+int max_laddr;
+static ioreq_event * iotrace_dedup_get_ioreq_event (FILE *tracefile, ioreq_event *new)
+{
+   char line[201];
+   char hash[33];
+
+   if (fgets(line, 200, tracefile) == NULL) {
+      addtoextraq((event *) new);
+      return(NULL);
+   }
+   if (sscanf(line, "%lf %d %d %d %s\n", &new->time,  &new->blkno, &new->bcount, &new->flags,hash) != 5) {
+      fprintf(stderr, "Wrong number of arguments for I/O trace event type\n");
+      fprintf(stderr, "line: %s", line);
+      ddbg_assert(0);
+   }
+
+   //flashsim
+   new->devno = 0;
+   new->bcount = ((new->blkno+ new->bcount-1)/4 - (new->blkno)/4 + 1) * 4;
+   new->blkno /= 4;
+   new->blkno *= 4;
+   new->blkno %= (max_laddr-1000);
+	new->blkno+=100;
+   if (new->flags & ASYNCHRONOUS) {
+      new->flags |= (new->flags & READ) ? TIME_LIMITED : 0;
+   } else if (new->flags & SYNCHRONOUS) {
+      new->flags |= TIME_CRITICAL;
+   }
+
+   new->buf = 0;
+   new->opid = 0;
+   new->busno = 0;
+   new->cause = 0;
+   return(new);
+}
 
 ioreq_event * iotrace_get_ioreq_event (FILE *tracefile, int traceformat, ioreq_event *temp)
 {
@@ -593,7 +630,9 @@ ioreq_event * iotrace_get_ioreq_event (FILE *tracefile, int traceformat, ioreq_e
    case EMCSYMM:
       temp = iotrace_emcsymm_get_ioreq_event(tracefile, temp);
       break;
-
+   case DEDUP:
+   	   temp= iotrace_dedup_get_ioreq_event(tracefile,temp);             //add by lhj,添加dedup格式trace解析
+	    break;
    default:
       fprintf(stderr, "Unknown traceformat in iotrace_get_ioreq_event - %d\n", traceformat);
       exit(1);

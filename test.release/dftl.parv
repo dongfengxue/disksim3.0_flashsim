@@ -1,7 +1,7 @@
 disksim_global Global { 
-   Init Seed = 42,
-   Real Seed = 42,
-   Stat definition file = statdefs
+   Init Seed = 42,          #初始化种子
+   Real Seed = 42,             #初始化种子
+   Stat definition file = statdefs    #
 }
 
 disksim_stats Stats {
@@ -57,8 +57,8 @@ process flow stats = disksim_pf_stats {
 # no iomaps
 
 disksim_iodriver DRIVER0 {
-  type = 1,
-  Constant access time = 0.0,
+  type = 1,                                 
+  Constant access time = 0.0,				#0:0表明仿真应根据存储子系统的变化状态，适当地计算所有访问和队列时间。
   Scheduler = disksim_ioqueue {
    Scheduling policy = 3,
    Cylinder mapping strategy = 1,
@@ -79,16 +79,16 @@ disksim_iodriver DRIVER0 {
 } # end of DRV0 spec
 
 disksim_bus BUS0 {
-  type = 2,
-  Arbitration type = 1,
-  Arbitration time = 0.0,
-  Read block transfer time = 0.0,
-  Write block transfer time = 0.0,
-  Print stats =  0
+  type = 2,                           #2表示共享总线
+  Arbitration type = 1, #1表示基于时隙的优先级（例如，SCSI总线），其中附件的顺序决定优先级，2表示先来先服务（FCFS）仲裁
+  Arbitration time = 0.0, #毫秒为单位，指定仲裁决定所需的时间
+  Read block transfer time = 0.0,  #传输512B的时间（毫秒）
+  Write block transfer time = 0.0,  #
+  Print stats =  0                #是否打印收集的统计数据
 } # end of BUS0 spec
 
 disksim_bus BUS1 {
-  type = 1,
+  type = 1,                    #1表示终身总线
   Arbitration type = 1,
   Arbitration time = 0.0,
   Read block transfer time = 0.015,
@@ -97,9 +97,9 @@ disksim_bus BUS1 {
 } # end of BUS1 spec
 
 disksim_ctlr CTLR0 {
-  type = 1,
-  Scale for delays = 0.0,
-  Bulk sector transfer time = 0.0,
+  type = 1,                 #1表示简单控制，桥的作用
+  Scale for delays = 0.0,      #延迟因子
+  Bulk sector transfer time = 0.0,   #
   Maximum queue length = 100000,
   Print stats =  1,
 Scheduler = disksim_ioqueue {

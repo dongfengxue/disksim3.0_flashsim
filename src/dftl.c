@@ -117,7 +117,7 @@ int opm_gc_get_free_blk(int small, int mapdir_flag)
 
 int opm_gc_run(int small, int mapdir_flag)
 {
-  blk_t victim_blk_no;
+  blk_t victim_blk_no;             // 需要回收的 blkno
   int merge_count;
   int i,z, j,m,q, benefit = 0;
   int k,old_flag,temp_arr[PAGE_NUM_PER_BLK],temp_arr1[PAGE_NUM_PER_BLK],map_arr[PAGE_NUM_PER_BLK]; 
@@ -126,9 +126,10 @@ int opm_gc_run(int small, int mapdir_flag)
   _u32 copy_lsn[SECT_NUM_PER_PAGE], copy[SECT_NUM_PER_PAGE];
   _u16 valid_sect_num,  l, s;
 
-  victim_blk_no = opm_gc_cost_benefit();
+  victim_blk_no = opm_gc_cost_benefit();      //返回无效sector最多的block作为目标block回收
   memset(copy_lsn, 0xFF, sizeof (copy_lsn));
 
+  // 只保留free_page_no[small]的后三位(page size:4kb).s则表示当前free sector是在page中的第几个sector
   s = k = OFF_F_SECT(free_page_no[small]);
 
   if(!((s == 0) && (k == 0))){
@@ -139,36 +140,37 @@ int opm_gc_run(int small, int mapdir_flag)
   small = -1;
 
   for( q = 0; q < PAGE_NUM_PER_BLK; q++){
-    if(nand_blk[victim_blk_no].page_status[q] == 1){ //map block
+    if(nand_blk[victim_blk_no].page_status[q] == 1){ //map block ,如果要回收的块是映射块
       for( q = 0; q  < 64; q++) {
         if(nand_blk[victim_blk_no].page_status[q] == 0 ){
           printf("something corrupted1=%d",victim_blk_no);
         }
       }
-      small = 0;
+      small = 0;  //map block
       break;
     } 
-    else if(nand_blk[victim_blk_no].page_status[q] == 0){ //data block
+    else if(nand_blk[victim_blk_no].page_status[q] == 0){ //data block,如果要回收的块是数据块
       for( q = 0; q  < 64; q++) {
         if(nand_blk[victim_blk_no].page_status[q] == 1 ){
           printf("something corrupted2",victim_blk_no);
         }
       }
-      small = 1;
+      small = 1;  //data block
       break;
     }
   }
 
   ASSERT ( small == 0 || small == 1);
   pos = 0;
-  merge_count = 0;
+  merge_count = 0;  //迁移页的数量
+  //对block中的每个页进行判断是否需要迁移，如果需要则进行迁移
   for (i = 0; i < PAGE_NUM_PER_BLK; i++) 
   {
-
+	     //如果这个页的状态是 valid 返回 1; invalid 返回 -1；free 返回 0;
     valid_flag = nand_oob_read( SECTOR(victim_blk_no, i * SECT_NUM_PER_PAGE));
 
-    if(valid_flag == 1)
-    {
+    if(valid_flag == 1)   // 这个页是的状态是 valid
+    {			 //copy[]记录的是该页中需要转移的 logical sector number，理论上是这个页中的所有sector
         valid_sect_num = nand_page_read( SECTOR(victim_blk_no, i * SECT_NUM_PER_PAGE), copy, 1);
 
         merge_count++;
@@ -176,41 +178,43 @@ int opm_gc_run(int small, int mapdir_flag)
         ASSERT(valid_sect_num == 4);
         k=0;
         for (j = 0; j < valid_sect_num; j++) {
-          copy_lsn[k] = copy[j];
+          copy_lsn[k] = copy[j];          // 将copy[]的数据保存到copy_lsn[]
           k++;
         }
 
-          benefit += opm_gc_get_free_blk(small, mapdir_flag);
+          benefit += opm_gc_get_free_blk(small, mapdir_flag);    // 申请新的位置来接受迁移的数据
 
-          if(nand_blk[victim_blk_no].page_status[i] == 1)
-          {                       
+          if(nand_blk[victim_blk_no].page_status[i] == 1)                // 迁移的数据是映射表 
+          {                       //更改映射表
             mapdir[(copy_lsn[s]/SECT_NUM_PER_PAGE)].ppn  = BLK_PAGE_NO_SECT(SECTOR(free_blk_no[small], free_page_no[small]));
             opagemap[copy_lsn[s]/SECT_NUM_PER_PAGE].ppn = BLK_PAGE_NO_SECT(SECTOR(free_blk_no[small], free_page_no[small]));
-
+					// 写入数据
             nand_page_write(SECTOR(free_blk_no[small],free_page_no[small]) & (~OFF_MASK_SECT), copy_lsn, 1, 2);
             free_page_no[small] += SECT_NUM_PER_PAGE;
           }
           else{
-
-
+				//迁移的数据用户数据
+				//更改映射表
             opagemap[BLK_PAGE_NO_SECT(copy_lsn[s])].ppn = BLK_PAGE_NO_SECT(SECTOR(free_blk_no[small], free_page_no[small]));
-
+				//写入数据
             nand_page_write(SECTOR(free_blk_no[small],free_page_no[small]) & (~OFF_MASK_SECT), copy_lsn, 1, 1);
             free_page_no[small] += SECT_NUM_PER_PAGE;
-
+				//如果修改的页的映射存在缓存中
             if((opagemap[BLK_PAGE_NO_SECT(copy_lsn[s])].map_status == MAP_REAL) || (opagemap[BLK_PAGE_NO_SECT(copy_lsn[s])].map_status == MAP_GHOST)) {
               delay_flash_update++;
             }
-        
+        		//如果该映射不在缓存中
             else {
   
-              map_arr[pos] = copy_lsn[s];
+              map_arr[pos] = copy_lsn[s];   //记录哪些被迁移的sector的映射记录没有命中
               pos++;
             } 
           }
     }
   }
-  
+   // temp_arr[] 记录sector的映射记录所在的逻辑映射页对应的物理地址
+    // temp_arr1[] 与temp_arr[]对应的sector的地址
+    // temp_arr1[i] 的映射记录所在的逻辑映射页对应的物理映射页地址是 temp_arr[i]
   for(i=0;i < PAGE_NUM_PER_BLK;i++) {
       temp_arr[i]=-1;
   }
@@ -244,18 +248,18 @@ int opm_gc_run(int small, int mapdir_flag)
 
                 free_page_no[0] = 0;
             }
-     
+     			 //读入映射表
             nand_page_read(temp_arr[i]*SECT_NUM_PER_PAGE,copy,1);
-
+				 //将原来的标记为无效
             for(m = 0; m<SECT_NUM_PER_PAGE; m++){
                nand_invalidate(mapdir[((temp_arr1[i]/SECT_NUM_PER_PAGE)/MAP_ENTRIES_PER_PAGE)].ppn*SECT_NUM_PER_PAGE+m, copy[m]);
               } 
             nand_stat(OOB_WRITE);
 
-
+				 //更新映射表
             mapdir[((temp_arr1[i]/SECT_NUM_PER_PAGE)/MAP_ENTRIES_PER_PAGE)].ppn  = BLK_PAGE_NO_SECT(SECTOR(free_blk_no[0], free_page_no[0]));
             opagemap[((temp_arr1[i]/SECT_NUM_PER_PAGE)/MAP_ENTRIES_PER_PAGE)].ppn = BLK_PAGE_NO_SECT(SECTOR(free_blk_no[0], free_page_no[0]));
-
+			 //写入新的映射表
             nand_page_write(SECTOR(free_blk_no[0],free_page_no[0]) & (~OFF_MASK_SECT), copy, 1, 2);
       
             free_page_no[0] += SECT_NUM_PER_PAGE;
@@ -278,7 +282,7 @@ int opm_gc_run(int small, int mapdir_flag)
   return (benefit + 1);
 }
 
-size_t opm_write(sect_t lsn, sect_t size, int mapdir_flag)  
+size_t opm_write(sect_t lsn, sect_t size, int mapdir_flag)   //FTL 中的读写操作
 {
   int i;
   int lpn = lsn/SECT_NUM_PER_PAGE; // logical page number
@@ -286,11 +290,11 @@ size_t opm_write(sect_t lsn, sect_t size, int mapdir_flag)
   int ppn;
   int small;
 
-  sect_t lsns[SECT_NUM_PER_PAGE];
+  sect_t lsns[SECT_NUM_PER_PAGE];  // lsns[] 保存的是将要对哪些 logical sector number 进行写入
   int sect_num = SECT_NUM_PER_PAGE;
 
-  sect_t s_lsn;	// starting logical sector number
-  sect_t s_psn; // starting physical sector number 
+  sect_t s_lsn;		// starting logical sector number
+  sect_t s_psn; 	// starting physical sector number 
   sect_t s_psn1;
 
 
@@ -300,51 +304,52 @@ size_t opm_write(sect_t lsn, sect_t size, int mapdir_flag)
   s_lsn = lpn * SECT_NUM_PER_PAGE;
 
 
-  if(mapdir_flag == 2) //map page
+  if(mapdir_flag == 2) //map page,要对 map page 进行写入
     small = 0;
-  else if ( mapdir_flag == 1) //data page
+  else if ( mapdir_flag == 1) //data page,要对 data page 进行写入
     small = 1;
   else{
     printf("something corrupted");
     exit(0);
   }
 
-  if (free_page_no[small] >= SECT_NUM_PER_BLK) 
+  if (free_page_no[small] >= SECT_NUM_PER_BLK)  //当前block已经写完了
   {
 
-    if ((free_blk_no[small] = nand_get_free_blk(0)) == -1) 
+    if ((free_blk_no[small] = nand_get_free_blk(0)) == -1)    
+    /*申请一个新的block（寻找一个擦写次数最少的空闲block），同时判断是否需要进行GC*/
     {
       int j = 0;
 
-      while (free_blk_num < 3 ){
-        j += opm_gc_run(small, mapdir_flag);
+      while (free_blk_num < 3 ){	 //需要进行垃圾回收
+        j += opm_gc_run(small, mapdir_flag);            // GC
       }
-      opm_gc_get_free_blk(small, mapdir_flag);
+      opm_gc_get_free_blk(small, mapdir_flag);         // 申请一个新的block,擦写次数最小的空闲block
     } 
     else {
-      free_page_no[small] = 0;
+      free_page_no[small] = 0;    //从新的一个blkno开始写
     }
   }
 
   memset (lsns, 0xFF, sizeof (lsns));
   
-  s_psn = SECTOR(free_blk_no[small], free_page_no[small]);
+  s_psn = SECTOR(free_blk_no[small], free_page_no[small]); // start logical sector number
 
-  if(s_psn % 4 != 0){
+  if(s_psn % 4 != 0){   //必须按页对齐(4KB)
     printf("s_psn: %d\n", s_psn);
   }
 
-  ppn = s_psn / SECT_NUM_PER_PAGE;
+  ppn = s_psn / SECT_NUM_PER_PAGE;   //physical page number
 
-  if (opagemap[lpn].free == 0) {
+  if (opagemap[lpn].free == 0) {          //要写入的地址已经存在数据
     s_psn1 = opagemap[lpn].ppn * SECT_NUM_PER_PAGE;
     for(i = 0; i<SECT_NUM_PER_PAGE; i++){
-      nand_invalidate(s_psn1 + i, s_lsn + i);
+      nand_invalidate(s_psn1 + i, s_lsn + i);  //将原来的数据标记为无效
     } 
-    nand_stat(3);
+    nand_stat(3);  //将原来的数据标记为无效需要一次 write oob 操作
   }
   else {
-    opagemap[lpn].free = 0;
+    opagemap[lpn].free = 0;   // 要写入的地址不存在数据
   }
 
   for (i = 0; i < SECT_NUM_PER_PAGE; i++) 
@@ -352,17 +357,17 @@ size_t opm_write(sect_t lsn, sect_t size, int mapdir_flag)
     lsns[i] = s_lsn + i;
   }
 
-  if(mapdir_flag == 2) {
+  if(mapdir_flag == 2) {       // 更改映射表
     mapdir[lpn].ppn = ppn;
     opagemap[lpn].ppn = ppn;
   }
-  else {
+  else {					 // 更改映射表
     opagemap[lpn].ppn = ppn;
   }
 
   free_page_no[small] += SECT_NUM_PER_PAGE;
 
-  nand_page_write(s_psn, lsns, 0, mapdir_flag);
+  nand_page_write(s_psn, lsns, 0, mapdir_flag);  //发送到下一层写入
 
   return sect_num;
 }

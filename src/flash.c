@@ -214,7 +214,7 @@ _u8 nand_page_read(_u32 psn, _u32 *lsns, _u8 isGC)
     for (i = 0; i < SECT_NUM_PER_PAGE; i++) {
 
       if((nand_blk[pbn].sect[pin + i].free == 0) &&
-         (nand_blk[pbn].sect[pin + i].valid == 1)) {
+         (nand_blk[pbn].sect[pin + i].valid == 1)) {          //有效数据
         lsns[valid_sect_num] = nand_blk[pbn].sect[pin + i].lsn;
         valid_sect_num++;
       }
@@ -296,17 +296,17 @@ _u8 nand_page_write(_u32 psn, _u32 *lsns, _u8 isGC, int map_flag)
 
     if (lsns[i] != -1) {
 
-      if(nand_blk[pbn].state.free == 1) {
+      if(nand_blk[pbn].state.free == 1) {  //写入的block必须是空闲的
         printf("blk num = %d",pbn);
       }
 
-      ASSERT(nand_blk[pbn].sect[pin + i].free == 1);
+      ASSERT(nand_blk[pbn].sect[pin + i].free == 1);   //写入的sector必须是空闲
       
-      nand_blk[pbn].sect[pin + i].free = 0;			
-      nand_blk[pbn].sect[pin + i].valid = 1;			
-      nand_blk[pbn].sect[pin + i].lsn = lsns[i];	
-      nand_blk[pbn].fpc--;  
-      nand_blk[pbn].lwn = pin + i;	
+      nand_blk[pbn].sect[pin + i].free = 0;	                  //标记为非空闲		
+      nand_blk[pbn].sect[pin + i].valid = 1;			      //标记为有效数据
+      nand_blk[pbn].sect[pin + i].lsn = lsns[i];	       //记录映射
+      nand_blk[pbn].fpc--;                                //free page(sector) counter
+      nand_blk[pbn].lwn = pin + i;	//last written sector number
       valid_sect_num++;
     }
     else{
@@ -380,28 +380,28 @@ void nand_invalidate (_u32 psn, _u32 lsn)
 
   ASSERT(nand_blk[pbn].sect[pin].lsn == lsn);
   
-  nand_blk[pbn].sect[pin].valid = 0;
-  nand_blk[pbn].ipc++;
+  nand_blk[pbn].sect[pin].valid = 0;              //页面置为无效
+  nand_blk[pbn].ipc++;							//无效页面+1
 
   ASSERT(nand_blk[pbn].ipc <= SECT_NUM_PER_BLK);
 
 }
 
-_u32 nand_get_free_blk (int isGC) 
+_u32 nand_get_free_blk (int isGC)  // isGC 表示是否在GC过程中调用这个函数
 {
   _u32 blk_no = -1, i;
   int flag = 0,flag1=0;
-  flag = 0;
-  flag1 = 0;
+  flag = 0;        //是否找到一个擦写次数最少的空闲块的标志
+  flag1 = 0;		//是否找到一个空闲块的标志
 
   MIN_ERASE = 9999999;
   //in case that there is no avaible free block -> GC should be called !
-  if ((isGC == 0) && (min_fb_num >= free_blk_num)) {
+  if ((isGC == 0) && (min_fb_num >= free_blk_num)) {    //空闲块数量低于阈值
     //printf("min_fb_num: %d\n", min_fb_num);
     return -1;
   }
 
-  for(i = 0; i < nand_blk_num; i++) 
+  for(i = 0; i < nand_blk_num; i++)    //寻找一个擦写次数最少的空闲block
   {
     if (nand_blk[i].state.free == 1) {
       flag1 = 1;
@@ -413,7 +413,7 @@ _u32 nand_get_free_blk (int isGC)
       }
     }
   }
-  if(flag1 != 1){
+  if(flag1 != 1){   // have no free block
     printf("no free block left=%d",free_blk_num);
     
   ASSERT(0);
@@ -425,7 +425,7 @@ _u32 nand_get_free_blk (int isGC)
         ASSERT(nand_blk[blk_no].lwn == -1);
         nand_blk[blk_no].state.free = 0;
 
-        free_blk_idx = blk_no;
+        free_blk_idx = blk_no;  //好像并没什么用处，后面并没有使用此变量
         free_blk_num--;
 
         return blk_no;

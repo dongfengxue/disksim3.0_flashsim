@@ -74,9 +74,9 @@ size_t pm_read(sect_t lsn, sect_t size, int mapdir_flag)
   if(mapdir_flag == 2){
     s_psn = mapdir[lpn].ppn * SECT_NUM_PER_PAGE;
   }
-  else s_psn = pagemap[lpn].ppn * SECT_NUM_PER_PAGE;
+  else s_psn = pagemap[lpn].ppn * SECT_NUM_PER_PAGE;     //物理sec的个数
 
-  s_lsn = lpn * SECT_NUM_PER_PAGE;
+  s_lsn = lpn * SECT_NUM_PER_PAGE;           //sec 的个数
 
   for (i = 0; i < SECT_NUM_PER_PAGE; i++) {
     lsns[i] = s_lsn + i;
@@ -101,7 +101,7 @@ int pm_gc_get_free_blk(int small, int mapdir_flag)
   return 0;
 }
 
-int pm_gc_run(int small, int mapdir_flag)
+int pm_gc_run(int small, int mapdir_flag)     //有效页面迁移，无效页面擦除
 {
   blk_t victim_blk_no = -1;
   int i, j,m, benefit = 0;
@@ -112,7 +112,7 @@ int pm_gc_run(int small, int mapdir_flag)
   _u32 copy_lsn[SECT_NUM_PER_PAGE], copy[SECT_NUM_PER_PAGE];
   _u16 valid_sect_num, k, l, s;
 
-  victim_blk_no = pm_gc_cost_benefit();
+  victim_blk_no = pm_gc_cost_benefit();    //无效页最多的blk no
 
   memset(copy_lsn, 0xFF, sizeof (copy_lsn));
 
@@ -120,9 +120,9 @@ int pm_gc_run(int small, int mapdir_flag)
 
   for (i = 0; i < PAGE_NUM_PER_BLK; i++) 
   {
-    valid_flag = nand_oob_read( SECTOR(victim_blk_no, i * SECT_NUM_PER_PAGE));
+    valid_flag = nand_oob_read( SECTOR(victim_blk_no, i * SECT_NUM_PER_PAGE));   //该页面是否有效
 
-    if(valid_flag == 1)
+    if(valid_flag == 1)  //该页面有效，迁移
     {
         valid_sect_num = nand_page_read( SECTOR(victim_blk_no, i * SECT_NUM_PER_PAGE), copy, 1);
 
@@ -143,7 +143,7 @@ int pm_gc_run(int small, int mapdir_flag)
   return (benefit + 1);
 }
 
-size_t pm_write(sect_t lsn, sect_t size, int mapdir_flag)  
+size_t pm_write(sect_t lsn, sect_t size, int mapdir_flag)     //向页面写东西
 {
   int i;
   int lpn = lsn/SECT_NUM_PER_PAGE;					
@@ -155,7 +155,7 @@ size_t pm_write(sect_t lsn, sect_t size, int mapdir_flag)
   sect_t s_lsn;	
   sect_t s_psn; 
   sect_t s_psn1;
-  sect_t lsns[SECT_NUM_PER_PAGE];;
+  sect_t lsns[SECT_NUM_PER_PAGE];
 
   ASSERT(lpn < pagemap_num);
   ASSERT(lpn + size_page <= pagemap_num);
@@ -170,10 +170,10 @@ size_t pm_write(sect_t lsn, sect_t size, int mapdir_flag)
     {
       int j = 0;
 
-      while (free_blk_num < 4){
+      while (free_blk_num < 4){                             //可用blk数量小于4，启动GC，每做一次有效blk+1
         j += pm_gc_run(small, mapdir_flag);
       }
-      pm_gc_get_free_blk(small, mapdir_flag);
+      pm_gc_get_free_blk(small, mapdir_flag);             	//得到空闲blk，根据擦写次数找
     } 
     else {
       free_page_no[small] = 0;
@@ -194,7 +194,7 @@ size_t pm_write(sect_t lsn, sect_t size, int mapdir_flag)
   if (pagemap[lpn].free == 0) {
     s_psn1 = pagemap[lpn].ppn * SECT_NUM_PER_PAGE;
     for(i = 0; i<SECT_NUM_PER_PAGE; i++){
-      nand_invalidate(s_psn1 + i, s_lsn + i);
+      nand_invalidate(s_psn1 + i, s_lsn + i);         //相应section页面置无效，置四次，page无效
     } 
     nand_stat(3);
   }
@@ -244,16 +244,16 @@ int pm_init(blk_t blk_num, blk_t extra_num)
   int i;
   int mapdir_num;
 
-  pagemap_num = blk_num * PAGE_NUM_PER_BLK;
+  pagemap_num = blk_num * PAGE_NUM_PER_BLK;     //pagemap的页号
 
-  pagemap = (struct pm_entry *) malloc(sizeof (struct pm_entry) * pagemap_num);
+  pagemap = (struct pm_entry *) malloc(sizeof (struct pm_entry) * pagemap_num);  //pagemap的指针
   mapdir = (struct map_dir *)malloc(sizeof(struct map_dir) * pagemap_num / MAP_ENTRIES_PER_PAGE); 
 
   if ((pagemap == NULL) || (mapdir == NULL)) {
     return -1;
   }
 
-  mapdir_num = (pagemap_num / MAP_ENTRIES_PER_PAGE);
+  mapdir_num = (pagemap_num / MAP_ENTRIES_PER_PAGE);      //包含几个map目录
 
   if((pagemap_num % MAP_ENTRIES_PER_PAGE) != 0){
     printf("pagemap_num % MAP_ENTRIES_PER_PAGE is not zero\n"); 
@@ -274,7 +274,7 @@ int pm_init(blk_t blk_num, blk_t extra_num)
 
   extra_blk_num = extra_num;
 
-  free_blk_no[1] = nand_get_free_blk(0);
+  free_blk_no[1] = nand_get_free_blk(0);   //根据擦除次数寻找free blk，1表示写的是映射表，函数内0表示非GC调用
   free_page_no[1] = 0;
 
   MAP_REAL_NUM_ENTRIES = 0;

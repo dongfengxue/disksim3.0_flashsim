@@ -261,6 +261,7 @@ typedef struct ioreq_ev {
    struct ioreq_ev *prev;
    int    bcount;
    int    blkno;
+  // void    process;
    u_int  flags;
    u_int  busno;
    u_int  slotno;

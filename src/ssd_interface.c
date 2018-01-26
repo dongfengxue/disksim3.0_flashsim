@@ -132,7 +132,7 @@ double calculate_delay_flash()
     req_count_num++;
   }
 
-  reset_flash_stat();
+  reset_flash_stat();    //初始化这7个变量，将它们的值全部置为0
 
   return delay;
 }
@@ -210,7 +210,7 @@ void endFlash()
 /***********************************************************************
   Send request (lsn, sector_cnt, operation flag)
   ***********************************************************************/
-
+//将请求发送到下一层。这样，针对一个页面的请求就完成了，这个过程循环 bcount 次，这个大请求也就完成了
 void send_flash_request(int start_blk_no, int block_cnt, int operation, int mapdir_flag)
 {
 	int size;
@@ -230,7 +230,7 @@ void send_flash_request(int start_blk_no, int block_cnt, int operation, int mapd
 
 		op_func = ftl_op->write;
 		while (block_cnt> 0) {
-			size = op_func(start_blk_no, block_cnt, mapdir_flag);
+			size = op_func(start_blk_no, block_cnt, mapdir_flag);   //函数指针调用，opm_write()函数
 			start_blk_no += size;
 			block_cnt-=size;
 		}
@@ -381,12 +381,12 @@ double callFsim(unsigned int secno, int scount, int operation)
       }
   }
       
-  // page based FTL 
+  // page based FTL ,pagemap
   if(ftl_type == 1 ) { 
     blkno = secno / 4;    //此处的blkno是pageno
-    bcount = (secno + scount -1)/4 - (secno)/4 + 1;    //占据的页长度
+    bcount = (secno + scount -1)/4 - (secno)/4 + 1;    //占据的页长度，按页对齐
   }  
-  // block based FTL 
+  // block based FTL ,blockmap
   else if(ftl_type == 2){
     blkno = secno/4;
     bcount = (secno + scount -1)/4 - (secno)/4 + 1;
@@ -394,8 +394,8 @@ double callFsim(unsigned int secno, int scount, int operation)
   // o-pagemap scheme
   else if(ftl_type == 3 ) { 
     blkno = secno / 4;
-    blkno += page_num_for_2nd_map_table;
-    bcount = (secno + scount -1)/4 - (secno)/4 + 1;
+    blkno += page_num_for_2nd_map_table;          // 低地址留给GTD，所以其他的地址都要加上一个偏移量
+    bcount = (secno + scount -1)/4 - (secno)/4 + 1;        
   }  
   // FAST scheme
   else if(ftl_type == 4){
@@ -416,10 +416,10 @@ double callFsim(unsigned int secno, int scount, int operation)
           cnt--;
 
         // page based FTL
-        if(ftl_type == 1){
-          send_flash_request(blkno*4, 4, operation, 1); 
-          blkno++;
-        }
+           if(ftl_type == 1){
+             send_flash_request(blkno*4, 4, operation, 1); 
+             blkno++;
+           }
 
         // blck based FTL
         else if(ftl_type == 2){
@@ -577,7 +577,7 @@ double callFsim(unsigned int secno, int scount, int operation)
   }
 
   delay = calculate_delay_flash();
-
+  /*并将 calculate_delay_flash() 的返回值作为 callFsim() 函数的返回值返回，表示的是处理整个大请求用了多少时间。*/
   return delay;
 }
 

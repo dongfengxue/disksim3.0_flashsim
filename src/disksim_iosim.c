@@ -675,7 +675,7 @@ event * io_get_next_external_event (FILE *iotracefile)
                 break;
    }
 
-   temp = iotrace_get_ioreq_event(iotracefile, disksim->traceformat, temp);
+   temp = iotrace_get_ioreq_event(iotracefile, disksim->traceformat, temp);   //读取trace，得到trance的的信息
    if (temp) {
       switch (disksim->traceformat) {
          case VALIDATE: io_validate_do_stats2 (temp);
@@ -694,7 +694,7 @@ event * io_get_next_external_event (FILE *iotracefile)
          exit(1);
       }
       if (tracemappings) {
-         io_map_trace_request(temp);
+         io_map_trace_request(temp);   //不知道在干嘛
       }
       io_extq = (event *)temp;
       io_extq_type = temp->type;

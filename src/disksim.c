@@ -151,7 +151,7 @@ static void allocateextra ()
 
 
 /* Deallocates an event structure, adding it to the extraq free pool. */
-  
+ /*重新分配一个事件结构,将它添加到extraq空闲池*/
 INLINE void addtoextraq (event *temp)
 {
    if (temp == NULL) {
@@ -557,7 +557,7 @@ static void initialize ()
       addtoextraq(getfromintq());
    }
    if (disksim->external_control | disksim->synthgen | disksim->iotrace) {
-      io_initialize(val);
+      io_initialize(val);             //模拟器相关的驱动器等初始化
    }
    if (disksim->synthgen) {
       pf_initialize(disksim->seedval);
@@ -695,7 +695,7 @@ static void prime_simulation ()
    if (disksim->checkpoint_interval > 0.0) {
       disksim_register_checkpoint (disksim->checkpoint_interval);
    }
-   if (disksim->iotrace) {
+   if (disksim->iotrace) {                     //iotrace 读取输入
       if ((curr = io_get_next_external_event(disksim->iotracefile)) == NULL) {
          disksim_cleanstats();
          return;
@@ -724,7 +724,7 @@ void disksim_simulate_event (int num)
 {
   event *curr;
   
-  if ((curr = getnextevent()) == NULL) {
+  if ((curr = getnextevent()) == NULL) {       //读取tracefile
     disksim_simstop ();
   } 
   else {
@@ -787,7 +787,7 @@ void disksim_simulate_event (int num)
   
 }
 
-
+/*实现打开输出文件，outputfile是打开输出文件指针*/
 static void disksim_setup_outputfile (char *filename, char *mode)
 {
    if (strcmp(filename, "stdout") == 0) {
@@ -870,9 +870,9 @@ void disksim_setup_disksim (int argc, char **argv)
     exit(1);
    } 
    
-  disksim_setup_outputfile (argv[2], "w");
-  printf("this is a test!\n");
-  fprintf(outputfile,"add by lhj");
+  disksim_setup_outputfile (argv[2], "w");   //写到输出文件中
+  printf("the outputfile is %s!\n",argv[2]);
+  fprintf(outputfile,"\n***add by lhj");
   fprintf (outputfile, "\n*** Output file name: %s\n", argv[2]); 
   fflush (outputfile);   //强制将缓冲区中的内容写入文件
    
@@ -886,7 +886,7 @@ void disksim_setup_disksim (int argc, char **argv)
   fprintf (outputfile, "*** Input trace format: %s\n", argv[3]); 
   fflush (outputfile); 
 
-  disksim_setup_iotracefile (argv[4]);        //打开trace文件
+  disksim_setup_iotracefile (argv[4]);        //只读打开trace文件,读取trace内容
   fprintf (outputfile, "*** I/O trace used: %s\n", argv[4]); 
   fflush (outputfile); 
 
@@ -930,7 +930,7 @@ void disksim_setup_disksim (int argc, char **argv)
     disksim->trace_mode = DISKSIM_NONE;
 /*    } */
   
-  if(disksim_loadparams(argv[1], disksim->synthgen)) {
+  if(disksim_loadparams(argv[1], disksim->synthgen)) {     //导入参数配置文件
     fprintf(stderr, "*** error: FATAL: failed to load disksim parameter file.\n");
     exit(1);
   }
@@ -945,11 +945,10 @@ void disksim_setup_disksim (int argc, char **argv)
   }
 
 
-
   initialize();
   fprintf(outputfile, "Initialization complete\n");
   fflush(outputfile);
-  prime_simulation();
+  prime_simulation();           //打开trace文件，读取输入的信息
 }
 
 

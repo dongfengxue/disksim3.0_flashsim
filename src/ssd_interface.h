@@ -51,13 +51,13 @@ double callFsim(unsigned int secno, int scount, int operation);
 int write_count;
 int read_count;
 
-int flash_read_num;
-int flash_write_num;
-int flash_gc_read_num;
-int flash_gc_write_num;
-int flash_erase_num;
-int flash_oob_read_num;
-int flash_oob_write_num;
+int flash_read_num;       //读闪存的次数
+int flash_write_num;	//写闪存的次数
+int flash_gc_read_num;	//擦除操作中读的次数
+int flash_gc_write_num;	//擦除操作中写的次数
+int flash_erase_num;	//擦除操作的次数
+int flash_oob_read_num;  //读 oob 的次数
+int flash_oob_write_num;    //写 oob 的次数
 
 int map_flash_read_num;
 int map_flash_write_num;
